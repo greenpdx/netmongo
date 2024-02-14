@@ -2,14 +2,22 @@ use mongodb::{Client, options::ClientOptions, Collection,
     bson::Document};
 use tokio::{
     net::{TcpListener, TcpStream},
-    io::{AsyncWriteExt, AsyncBufReadExt}
+    io::{AsyncWriteExt, AsyncBufReadExt},
 };
-use std::error::Error;
-
+use std::net::{Ipv4Addr, Ipv6Addr};
 use serde::{Serialize, Deserialize};
+use chrono::{DateTime, Utc};
+
+mod intruder;
+mod telnet;
+
+use telnet::{handle_telnet_client};
+use intruder::Intruder;
+
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Config {
+pub struct Config {
     dburl: String,
     hostname: String,
 }
@@ -24,7 +32,7 @@ impl Default for Config {
 }
 
 #[derive(Debug)]
-struct AppData {
+pub struct AppData {
     conf: Config,
     mongo: Option<Client>,
     stream: TcpStream,
@@ -33,17 +41,22 @@ struct AppData {
 
 
 //async fn netapp(client: &Client) {
-async fn netapp(stream: &TcpStream, client: Client)  {
-    let coll = open_intruders_collection(&client).await;
+async fn netapp(stream: &TcpStream, client: Client)  -> Result<()> {
+    let rmtaddr = stream.peer_addr().unwrap().ip();
+    let rmtport = stream.peer_addr().unwrap().port();
+
+    let _coll = open_intruders_collection(&client).await;
     //for db_name in client.list_database_names(None, None).await.expect("Bad") {
     //    println!("{}", db_name);
     //};
-
+    let mut intruder = Intruder::init(rmtaddr, rmtport);
+    let _ = handle_telnet_client(stream, &mut intruder).await;
+    Ok(())
     
 }
 
 
-pub async fn connect_to_database(conf: &mut Config) -> Client {
+async fn connect_to_database(conf: &mut Config) -> Client {
     let mut cliopts = ClientOptions::parse(conf.dburl.clone()).await.expect("BAD OPTS");
     cliopts.app_name = Some(conf.hostname.clone());
     let client = Client::with_options(cliopts).expect("NO CLIENT");
@@ -72,7 +85,7 @@ async fn main() {
         // A new task is spawned for each inbound socket. The socket is
         // moved to the new task and processed there.
         tokio::spawn(async move {
-            netapp(&stream, client).await;
+            let _ =netapp(&stream, client).await;
         });
     }
 
