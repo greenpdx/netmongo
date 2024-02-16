@@ -5,6 +5,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use crate::{AppData, intruder::Intruder};
 use mongodb::Client;
 use geolocation::{find, Locator};
+
 use std::fmt::{self, Debug, Formatter};
 
 #[derive(Clone,Deserialize, Serialize, Eq, PartialEq, Hash)]
@@ -51,7 +52,8 @@ impl From<&Locator> for GeoInfo {
 
 async fn get_ggip_web(intruder: &Intruder) {
     let ip = intruder.ip.clone();
-    let info  = GeoInfo::from(&find(&ip).unwrap());
+    let loc = GeoInfo::from(&find(&ip).unwrap());
+    let info  = serde_json::to_value(loc).unwrap();
     println!("{:?}", info);
 }
 
