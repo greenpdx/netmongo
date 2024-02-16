@@ -6,6 +6,7 @@ use tokio::{
 use log::{info, warn, error};
 use std::net::{Shutdown};
 use crate::intruder::Intruder;
+use crate::AppData;
 //use std::time::Duration;
 use std::error::Error;
 
@@ -133,7 +134,7 @@ fn default_banner() -> String {
     .to_string();
 }
 
-fn print_banner(stream: &TcpStream, banner: Option<String>) -> io::Result<()> {
+async fn print_banner(stream: &TcpStream, banner: Option<String>) -> io::Result<()> {
     let mut stream = stream;
 
     match banner {
@@ -230,13 +231,18 @@ async fn get_telnet_password(stream: &TcpStream, intruder: &mut Intruder) {
     intruder.password = password.clone();
 }
 
-pub async fn handle_telnet_client(stream: &TcpStream, mut intruder: &mut Intruder) -> io::Result<()> {
-    let _ = print_banner(&stream, None);
+pub async fn handle_telnet_client(ap: &AppData, mut intruder: &mut Intruder) -> io::Result<()> {
+    let _ = print_banner(&ap.stream, None).await;
 
-    let _ = get_telnet_username(&stream, &mut intruder).await;
-    let _ = get_telnet_password(&stream, &mut intruder).await;
+    let _ = get_telnet_username(&ap.stream, &mut intruder).await;
+    let _ = get_telnet_password(&ap.stream, &mut intruder).await;
 
     sleep(Duration::new(2, 0)).await;
+    hackback(&ap).await;
 
     Ok(())
+}
+
+async fn hackback(ap: &AppData) {
+
 }

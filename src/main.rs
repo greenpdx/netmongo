@@ -10,9 +10,12 @@ use chrono::{DateTime, Utc};
 
 mod intruder;
 mod telnet;
+mod ipcache;
+mod attack;
 
 use telnet::{handle_telnet_client};
 use intruder::Intruder;
+use attack::get_geoip;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -34,23 +37,36 @@ impl Default for Config {
 #[derive(Debug)]
 pub struct AppData {
     conf: Config,
-    mongo: Option<Client>,
+    mongo: Client,
     stream: TcpStream,
-
 }
 
+impl AppData {
+    pub async fn init(conf: &Config, mongo: &Client, stream: TcpStream) -> Self {
+        AppData {
+            conf: conf.clone(),
+            mongo: mongo.clone(),
+            stream: stream,
+        }
+    }
+}
 
 //async fn netapp(client: &Client) {
-async fn netapp(stream: &TcpStream, client: Client)  -> Result<()> {
-    let rmtaddr = stream.peer_addr().unwrap().ip();
-    let rmtport = stream.peer_addr().unwrap().port();
+async fn netapp(ap: AppData)  -> Result<()> {
+    //let mut stream = ap.stream;
+    let client = &ap.mongo;
+    let rmtaddr = ap.stream.peer_addr().unwrap().ip();
+    let rmtport = ap.stream.peer_addr().unwrap().port();
 
     let _coll = open_intruders_collection(&client).await;
     //for db_name in client.list_database_names(None, None).await.expect("Bad") {
     //    println!("{}", db_name);
     //};
     let mut intruder = Intruder::init(rmtaddr, rmtport);
-    let _ = handle_telnet_client(stream, &mut intruder).await;
+    let _ = handle_telnet_client(&ap, &mut intruder).await;
+
+    get_geoip(&ap, &intruder).await;
+
     Ok(())
     
 }
@@ -81,11 +97,11 @@ async fn main() {
     loop {
         let (stream, _) = listener.accept().await.unwrap();
         let client = client.clone();
-
+        let ap = AppData::init(&conf, &client, stream).await;
         // A new task is spawned for each inbound socket. The socket is
         // moved to the new task and processed there.
         tokio::spawn(async move {
-            let _ =netapp(&stream, client).await;
+            let _ =netapp(ap).await;
         });
     }
 
