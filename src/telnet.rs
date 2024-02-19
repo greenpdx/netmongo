@@ -4,11 +4,14 @@ use tokio::{
     time::{sleep, Duration}
 };
 use log::{info, warn, error};
-use std::net::{Shutdown};
-use crate::intruder::Intruder;
+use std::{collections::HashMap, net::Shutdown};
+use crate::{intruder::Intruder, ipcache::{new_geoip, IpInfoCache, IpTok, IpInfo}, CacheMap};
 use crate::AppData;
+//use crate::attack::{ hackback, GeoInfo};
+use serde_json::Value;
 //use std::time::Duration;
 use std::error::Error;
+use std::sync::{Arc, Mutex};
 
 struct TelnetStream<'a> {
     stream: &'a TcpStream,
@@ -154,8 +157,14 @@ async fn get_telnet_username(stream: &TcpStream, intruder: &mut Intruder) {
 
     telnet_stream.write_all(b"login: ").await;
 
-    let username = read_until_cr(&telnet_stream.stream).await.unwrap();
-    intruder.username = username.trim().to_string().clone();
+    let username = match read_until_cr(&telnet_stream.stream).await {
+        Ok(n) => { n},
+        Err(err) => {
+            println!("{:?}", err);
+            return;
+        }
+    };
+    intruder.username = Some(username.trim().to_string().clone());
 }
 
 async fn read_until_cr(stream: &TcpStream) -> Result<String, Box<dyn Error>>  {
@@ -167,7 +176,7 @@ async fn read_until_cr(stream: &TcpStream) -> Result<String, Box<dyn Error>>  {
 
         let mut buf = [0; 1024];
         let n = telnet_stream.read(&mut buf).await; // TODO: this errors out: panicked at 'called `Result::unwrap()` on an `Err` value: Os { code: 11, kind: WouldBlock, message: "Resource temporarily unavailable" }'
-        println!("{:?}", n);
+        //println!("{:?}", n);
 
         let n = match n {
             Ok(0) => break,
@@ -225,24 +234,28 @@ async fn get_telnet_password(stream: &TcpStream, intruder: &mut Intruder) {
 
     let mut password = read_until_cr(&telnet_stream.stream).await.unwrap();
     telnet_stream.write_all(TelnetCommand::CarriageReturnLineFeedCRLF.as_bytes()).await;
-
+    println!("{:?}", password);
     password = password.trim().to_string();
 
-    intruder.password = password.clone();
+    intruder.password = Some(password.clone());
 }
 
-pub async fn handle_telnet_client(ap: &AppData, mut intruder: &mut Intruder) -> io::Result<()> {
+//pub async fn handle_telnet_client(ap: &AppData, mut intruder: &mut Intruder, cache: &Arc<std::sync::Mutex<IpInfoCache>>) -> io::Result<()> {
+pub async fn handle_telnet_client(ap: &AppData, mut intruder: &mut Intruder, cache: &CacheMap) -> io::Result<()> {
     let _ = print_banner(&ap.stream, None).await;
 
     let _ = get_telnet_username(&ap.stream, &mut intruder).await;
     let _ = get_telnet_password(&ap.stream, &mut intruder).await;
+    println!("{:?}", &intruder);
+    //let mut cache = cache.lock().unwrap();
+    //cache.retrieve(&intruder.iptok).await;
+    let ipinfo = cache.retrieve(&intruder.iptok).await;
+
+    //let ipinfo = new_geoip(&intruder.iptok, &ap.conf.ipinfo).await;
+    intruder.wrdb_intruder(&ap).await;
+    //hackback(&ap).await;
 
     sleep(Duration::new(2, 0)).await;
-    hackback(&ap).await;
-
+   
     Ok(())
-}
-
-async fn hackback(ap: &AppData) {
-
 }

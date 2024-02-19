@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use log::{info, warn, error};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use chrono::{DateTime, Utc, serde::ts_seconds};
+use crate::{ipcache::IpTok,AppData,Config, open_intruders_collection};
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct IPInfo {
@@ -25,42 +26,41 @@ impl IPInfo {
 
 #[derive(Debug, Clone,Deserialize, Serialize)]
 pub struct Intruder {
-    pub username: String,
-    pub password: String,
-    pub ip_info: IPInfo,
-    pub ip_v4_address: Option<Ipv4Addr>,
-    pub ip_v6_address: Option<Ipv6Addr>,
-    pub ip: String,
-    pub source_port: u16,
+    pub iptok: IpTok,
+    pub username: Option<String>,
+    pub password: Option<String>,
     #[serde(with = "ts_seconds")]
     pub time: DateTime<Utc>,
 }
 
 impl Intruder {
-    pub fn init(ip_address: IpAddr, source_port: u16) -> Self {
+    pub fn init(ip_address: IpAddr, dst_port: u16) -> Self {
         Self {
-            username: "".to_string(),
-            password: "".to_string(),
-            ip_info: IPInfo::new(),
-            ip_v4_address: None,
-            ip_v6_address: None,
-            ip: "".to_string(),
-            source_port: 0,
+            iptok: IpTok { saddr: ip_address, dport: dst_port},
+            username: None,
+            password: None,
             time: Utc::now(),
-        }
-    }
-
-    pub fn set_ip(&mut self) {
-        if let Some(ip) = self.ip_v4_address {
-            self.ip = ip.to_string();
-        } else if let Some(ip) = self.ip_v6_address {
-            self.ip = ip.to_string();
-        } else {
-            self.ip = "".to_string();
         }
     }
 
     fn time_to_text(&self) -> String {
         self.time.format("%Y-%m-%d %H:%M:%S").to_string()
+    }
+
+    pub async fn wrdb_intruder(&self, ap:&AppData) {
+        let client = &ap.mongo;
+    
+        let coll = open_intruders_collection(&client).await;
+        let rslt = match coll.insert_one(self, None).await {
+            Ok(d) => {
+                d
+            },
+            Err(err) => {
+                    println!("{:?}",err);
+                    return
+            },
+         };
+
+         println!("Intruder {:?}", rslt);
     }
 }
