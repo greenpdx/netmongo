@@ -1,17 +1,13 @@
 use tokio::{
-    net::{TcpListener, TcpStream},
-    io::{self, AsyncWriteExt},
+    net::TcpStream,
+    io::{self},
     time::{sleep, Duration}
 };
 use log::{info, warn, error};
-use std::{collections::HashMap, net::Shutdown};
-use crate::{intruder::Intruder, ipcache::{new_geoip, IpInfoCache, IpTok, IpInfo}, CacheMap};
+use crate::{intruder::Intruder, CacheMap};
 use crate::AppData;
-//use crate::attack::{ hackback, GeoInfo};
-use serde_json::Value;
-//use std::time::Duration;
 use std::error::Error;
-use std::sync::{Arc, Mutex};
+//use std::sync::Arc;
 
 struct TelnetStream<'a> {
     stream: &'a TcpStream,
@@ -138,7 +134,7 @@ fn default_banner() -> String {
 }
 
 async fn print_banner(stream: &TcpStream, banner: Option<String>) -> io::Result<()> {
-    let mut stream = stream;
+    let stream = stream;
 
     match banner {
         Some(banner) => {

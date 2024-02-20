@@ -1,16 +1,15 @@
-use mongodb::{Client, options::ClientOptions, Collection,
-    bson::Document};
+use mongodb::{Client, options::ClientOptions, Collection};
 use tokio::{
     net::{TcpListener, TcpStream},
-    io::{AsyncWriteExt, AsyncBufReadExt},
+    //io::{AsyncWriteExt, AsyncBufReadExt},
 };
-use std::net::{Ipv4Addr, Ipv6Addr, IpAddr};
-use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
-use chrono::{DateTime, Utc};
-use std::str::FromStr;
-use ipgeolocate::{Locator, Service, GeoError};
-use std::sync::{Arc, Mutex};
+//use std::net::{Ipv4Addr, Ipv6Addr, IpAddr};
+//use std::collections::HashMap;
+//use serde::{Serialize, Deserialize};
+//use chrono::{DateTime, Utc};
+//use std::str::FromStr;
+//use ipgeolocate::{Locator, Service, GeoError};
+use std::sync::Arc;
 
 
 use clap::Parser;
@@ -19,8 +18,8 @@ mod telnet;
 mod ipcache;
 //mod attack;
 
-use telnet::{handle_telnet_client};
-use intruder::{Intruder};
+use telnet::handle_telnet_client;
+use intruder::Intruder;
 //use attack::new_geoip;
 use ipcache::{IpInfo, IpTok, ConfIpInfo, IpInfoCache};
 use anyhow::Result;
@@ -33,17 +32,17 @@ type CacheMap = Arc<IpInfoCache>;
 pub struct Config {
     dburl: String,
     hostname: String,
-    database: String,
+    _database: String,
     ipinfo: ConfIpInfo,
 }
 
 impl Config {
-    async fn init(args: &Args) -> Self {
+    async fn init(_args: &Args) -> Self {
         let confipinfo = ConfIpInfo::default();
         Config {
             dburl: "mongodb://10.1.42.239".to_string(),
             hostname: "netapp".to_string(),
-            database: "netapp".to_string(),
+            _database: "netapp".to_string(),
             ipinfo: confipinfo,
         }
     }
@@ -63,7 +62,7 @@ struct Args {
 
 #[derive(Debug)]
 pub struct AppData {
-    conf: Config,
+    _conf: Config,
     mongo: Client,
     stream: TcpStream,
 }
@@ -71,7 +70,7 @@ pub struct AppData {
 impl AppData {
     pub async fn init(conf: &Config, mongo: &Client, stream: TcpStream) -> Self {
         AppData {
-            conf: conf.clone(),
+            _conf: conf.clone(),
             mongo: mongo.clone(),
             stream: stream,
         }
@@ -112,14 +111,14 @@ async fn open_intruders_collection(client: &Client) -> Collection<Intruder> {
     collection
 }
 
-pub async fn ipinfo_coll(client: &Client, iptok: &IpTok) -> Collection<IpInfo> {
+pub async fn ipinfo_coll(client: &Client, _iptok: &IpTok) -> Collection<IpInfo> {
     let db = client.database("netapp");
     let collection = db.collection::<IpInfo>("ipinfo");
     collection
 }
-pub async fn save_ipinfo_collection(client: &Client, ipinfo: &IpInfo) {
+pub async fn save_ipinfo_collection(client: &Client, _ipinfo: &IpInfo) {
     let db = client.database("netapp");
-    let collection = db.collection::<IpInfo>("ipinfo");
+    let _collection = db.collection::<IpInfo>("ipinfo");
 
   
 }
@@ -146,7 +145,7 @@ async fn main() {
         // moved to the new task and processed there.
         //tokio::spawn(async move {
         tokio::spawn(async move {
-            netapp(ap, &cache).await;
+            let _ = netapp(ap, &cache).await;
         });
     }
 

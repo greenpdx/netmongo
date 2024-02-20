@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use log::{info, warn, error};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::IpAddr;
 use chrono::{DateTime, Utc, serde::ts_seconds};
-use crate::{ipcache::IpTok,AppData,Config, open_intruders_collection};
+use crate::{ipcache::IpTok,AppData, open_intruders_collection};
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct IPInfo {
@@ -11,17 +11,6 @@ pub struct IPInfo {
     #[serde(rename = "country_code2")]
     country_code: String,
     isp: String,
-}
-
-impl IPInfo {
-    fn new() -> Self {
-        Self {
-            ip: "".to_string(),
-            country_name: "".to_string(),
-            country_code: "".to_string(),
-            isp: "".to_string(),
-        }
-    }
 }
 
 #[derive(Debug, Clone,Deserialize, Serialize)]
