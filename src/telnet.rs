@@ -7,7 +7,7 @@ use log::{info, warn, error};
 use crate::{intruder::Intruder, CacheMap};
 use crate::AppData;
 use std::error::Error;
-//use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 struct TelnetStream<'a> {
     stream: &'a TcpStream,
@@ -245,7 +245,7 @@ pub async fn handle_telnet_client(ap: &AppData, mut intruder: &mut Intruder, cac
     println!("{:?}", &intruder);
     //let mut cache = cache.lock().unwrap();
     //cache.retrieve(&intruder.iptok).await;
-    let ipinfo = cache.retrieve(&intruder.iptok).await;
+    let ipinfo = cache.lock().await.retrieve(&intruder.iptok).await;
 
     //let ipinfo = new_geoip(&intruder.iptok, &ap.conf.ipinfo).await;
     intruder.wrdb_intruder(&ap).await;

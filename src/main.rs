@@ -1,6 +1,7 @@
 use mongodb::{Client, options::ClientOptions, Collection};
 use tokio::{
     net::{TcpListener, TcpStream},
+    sync::Mutex
     //io::{AsyncWriteExt, AsyncBufReadExt},
 };
 //use std::net::{Ipv4Addr, Ipv6Addr, IpAddr};
@@ -25,7 +26,7 @@ use ipcache::{IpInfo, IpTok, ConfIpInfo, IpInfoCache};
 use anyhow::Result;
 
 //type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-type CacheMap = Arc<IpInfoCache>;
+type CacheMap = Arc<Mutex<IpInfoCache>>;
 //type CacheMap = Arc<Mutex<HashMap<IpTok, &'static IpInfo>>>;
 
 #[derive(Debug, Clone)]
@@ -133,7 +134,7 @@ async fn main() {
     
     let listener = TcpListener::bind("0.0.0.0:2223").await.unwrap();
 
-    let cache = Arc::new(IpInfoCache::init(&client, &conf.ipinfo));
+    let cache = Arc::new(Mutex::new(IpInfoCache::init(&client, &conf.ipinfo)));
     //let cache = Arc::new(Mutex::new(HashMap::new()));
     //let cache = Arc::new(HashMap::new());
     loop {
